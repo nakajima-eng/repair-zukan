@@ -152,17 +152,14 @@
       try {
         const recId = editingId || doc(collection(db, 'dummy')).id;
 
-        // base64の写真をStorageにアップロード
-        const photoResults = [];
-        for (let i = 0; i < photoPreviews.length; i++) {
-          const p = photoPreviews[i];
-          if (p.type === 'base64') {
-            const { url, path } = await uploadPhoto(p.data, recId, i);
-            photoResults.push({ url, path });
-          } else {
-            photoResults.push({ url: p.url, path: p.path || '' });
-          }
-        }
+        // 写真を並列アップロード（全枚数同時処理で高速化）
+        const photoResults = await Promise.all(
+          photoPreviews.map((p, i) =>
+            p.type === 'base64'
+              ? uploadPhoto(p.data, recId, i)
+              : Promise.resolve({ url: p.url, path: p.path || '' })
+          )
+        );
 
         const now = new Date();
         const rec = {
