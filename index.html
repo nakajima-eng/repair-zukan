@@ -491,6 +491,9 @@
     .form-select option { background: var(--surface2); }
     .photo-upload-area { border: 2px dashed var(--border); border-radius: 10px; padding: 20px; text-align: center; cursor: pointer; color: var(--text2); font-size: 14px; }
     .photo-upload-area:active { border-color: var(--accent); }
+    .photo-btn-group { display: flex; gap: 8px; width: 100%; }
+    .photo-btn-group label { flex: 1; border: 2px solid var(--accent); border-radius: 10px; padding: 16px 8px; text-align: center; cursor: pointer; color: var(--text); font-size: 14px; font-weight: 700; font-family: "Noto Sans JP", sans-serif; display: flex; align-items: center; justify-content: center; gap: 6px; background: var(--surface2); min-height: 60px; -webkit-user-select: none; user-select: none; }
+    .photo-btn-group label:active { background: var(--accent); color: #fff; }
     .photo-previews { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
     .photo-preview-wrap { position: relative; width: calc(min(22vw, 90px)); height: calc(min(22vw, 90px)); flex-shrink: 0; }
     .photo-preview { width: 100%; height: 100%; border-radius: 8px; object-fit: cover; display: block; }
@@ -602,9 +605,11 @@
     <div class="overlay-body">
       <div class="form-group">
         <div class="form-label">写真</div>
-        <label for="photoInput" class="photo-upload-area" style="display:block;cursor:pointer;">
-          📷 タップして写真を追加（複数可）
-        </label>
+        <div class="photo-btn-group">
+          <label for="cameraInput">📷 カメラ撮影</label>
+          <label for="photoInput">🖼 ライブラリから選択</label>
+        </div>
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhotos(event)">
         <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="handlePhotos(event)">
         <div class="photo-previews" id="photoPreviews"></div>
       </div>
