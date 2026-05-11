@@ -139,8 +139,8 @@
     function renderPhotoPreviews() {
       document.getElementById('photoPreviews').innerHTML = photoPreviews.map((p, i) =>
         `<div class="photo-preview-wrap">
-          <img class="photo-preview" src="${p.type==='url'?p.url:p.data}" alt="">
-          <button class="photo-del" onclick="removePhoto(${i})">✕</button>
+          <img class="photo-preview" src="${p.type==='url'?p.url:p.data}" alt="" loading="lazy">
+          <button class="photo-del" onclick="removePhoto(${i})" type="button">✕</button>
         </div>`).join('');
     }
 
@@ -488,8 +488,8 @@
     .photo-upload-area { border: 2px dashed var(--border); border-radius: 10px; padding: 20px; text-align: center; cursor: pointer; color: var(--text2); font-size: 14px; }
     .photo-upload-area:active { border-color: var(--accent); }
     .photo-previews { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-    .photo-preview-wrap { position: relative; }
-    .photo-preview { width: 80px; height: 80px; border-radius: 8px; object-fit: cover; display: block; }
+    .photo-preview-wrap { position: relative; width: 80px; height: 80px; flex-shrink: 0; }
+    .photo-preview { width: 80px; height: 80px; border-radius: 8px; object-fit: cover; display: block; flex-shrink: 0; }
     .photo-del { position: absolute; top: -6px; right: -6px; background: var(--red); color: #fff; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     .save-btn { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 14px; font-size: 16px; font-weight: 700; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; width: 100%; margin-top: 8px; }
     .del-btn { background: transparent; color: var(--red); border: 1px solid var(--red); border-radius: 10px; padding: 12px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; width: 100%; }
@@ -598,10 +598,10 @@
     <div class="overlay-body">
       <div class="form-group">
         <div class="form-label">写真</div>
-        <div class="photo-upload-area" onclick="document.getElementById('photoInput').click()">
+        <label for="photoInput" class="photo-upload-area" style="display:block;cursor:pointer;">
           📷 タップして写真を追加（複数可）
-          <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="handlePhotos(event)">
-        </div>
+        </label>
+        <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="handlePhotos(event)">
         <div class="photo-previews" id="photoPreviews"></div>
       </div>
       <div class="form-group">
