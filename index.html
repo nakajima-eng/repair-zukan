@@ -44,7 +44,7 @@
     let photoPreviews = []; // {type:'url'|'base64', data:string, storePath?:string}[]
     let lbPhotos = [], lbIndex = 0, lbTouchStartX = 0, lbScale = 1, lbLastDist = 0;
 
-    const CATEGORIES = ['給湯器', 'エアコン', 'バス乾', '食洗機'];
+    const CATEGORIES = ['給湯器', 'エアコン', 'ハウジングエアコン（HAC）', 'パッケージエアコン（PAC）', 'バス乾', '食洗機'];
 
     // ========== Auth ==========
     window.loginGoogle = async () => {
@@ -261,8 +261,50 @@
     };
 
     // ========== ライトボックス ==========
+    let lbTx = 0, lbTy = 0;            // 拡大中の移動量
+    let lbPanX = 0, lbPanY = 0;        // 1本指ドラッグの前回座標
+    let lbPanning = false;
+    let lbCx = 0, lbCy = 0;            // ピンチ開始時の画像中心（無変形時）
+    let lbLastTap = 0, lbTouchStartY = 0;
+
+    function lbCurImg() {
+      return document.querySelector('.lb-slide:nth-child('+(lbIndex+1)+') img');
+    }
+
+    // 移動範囲を画像内に制限してtransformを適用
+    function lbApply() {
+      const img = lbCurImg();
+      if (!img) return;
+      const maxX = Math.max(0, (lbScale - 1) * img.offsetWidth  / 2);
+      const maxY = Math.max(0, (lbScale - 1) * img.offsetHeight / 2);
+      lbTx = Math.min(maxX, Math.max(-maxX, lbTx));
+      lbTy = Math.min(maxY, Math.max(-maxY, lbTy));
+      img.style.transform = `translate(${lbTx}px, ${lbTy}px) scale(${lbScale})`;
+    }
+
+    // ダブルタップ：タップ位置を中心に2.5倍 ⇔ 等倍
+    function lbDoubleTap(x, y) {
+      const img = lbCurImg();
+      if (!img) return;
+      img.style.transition = 'transform 0.2s';
+      if (lbScale > 1.05) {
+        lbScale = 1; lbTx = 0; lbTy = 0;
+      } else {
+        const r = img.getBoundingClientRect();
+        const cx = r.left + r.width / 2 - lbTx;
+        const cy = r.top  + r.height / 2 - lbTy;
+        const ns = 2.5;
+        lbTx = (x - cx) - (ns / lbScale) * ((x - cx) - lbTx);
+        lbTy = (y - cy) - (ns / lbScale) * ((y - cy) - lbTy);
+        lbScale = ns;
+      }
+      lbApply();
+      setTimeout(() => { const i = lbCurImg(); if (i) i.style.transition = 'none'; }, 220);
+    }
+
     window.openLightbox = (photos, index) => {
-      lbPhotos = photos; lbIndex = index; lbScale = 1;
+      lbPhotos = photos; lbIndex = index;
+      lbScale = 1; lbTx = 0; lbTy = 0;
       const slides = document.getElementById('lbSlides');
       slides.style.transition = 'none';
       slides.innerHTML = photos.map(url =>
@@ -273,28 +315,76 @@
       document.getElementById('lightbox').classList.add('open');
 
       const track = document.getElementById('lbTrack');
-      // スワイプ
       track.ontouchstart = e => {
-        if (e.touches.length === 1) { lbTouchStartX = e.touches[0].clientX; lbLastDist = 0; }
-        if (e.touches.length === 2) { lbLastDist = getTouchDist(e); }
+        const img = lbCurImg();
+        if (img) img.style.transition = 'none';
+        if (e.touches.length === 1) {
+          lbTouchStartX = e.touches[0].clientX;
+          lbTouchStartY = e.touches[0].clientY;
+          lbPanX = e.touches[0].clientX;
+          lbPanY = e.touches[0].clientY;
+          lbPanning = lbScale > 1.05;
+          lbLastDist = 0;
+        }
+        if (e.touches.length === 2) {
+          lbPanning = false;
+          lbLastDist = getTouchDist(e);
+          if (img) {
+            const r = img.getBoundingClientRect();
+            lbCx = r.left + r.width / 2 - lbTx;
+            lbCy = r.top  + r.height / 2 - lbTy;
+          }
+        }
       };
       track.ontouchmove = e => {
+        // 1本指：拡大中はパン（移動）
+        if (e.touches.length === 1 && lbPanning) {
+          e.preventDefault();
+          lbTx += e.touches[0].clientX - lbPanX;
+          lbTy += e.touches[0].clientY - lbPanY;
+          lbPanX = e.touches[0].clientX;
+          lbPanY = e.touches[0].clientY;
+          lbApply();
+          return;
+        }
+        // 2本指：ピンチ位置を中心にズーム
         if (e.touches.length === 2) {
           e.preventDefault();
           const dist = getTouchDist(e);
           if (lbLastDist > 0) {
-            lbScale = Math.min(4, Math.max(1, lbScale * (dist / lbLastDist)));
-            const img = document.querySelector('.lb-slide:nth-child('+(lbIndex+1)+') img');
-            if (img) img.style.transform = `scale(${lbScale})`;
+            const ns = Math.min(5, Math.max(1, lbScale * (dist / lbLastDist)));
+            const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - lbCx;
+            const my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - lbCy;
+            lbTx = mx - (ns / lbScale) * (mx - lbTx);
+            lbTy = my - (ns / lbScale) * (my - lbTy);
+            lbScale = ns;
+            if (lbScale <= 1.02) { lbScale = 1; lbTx = 0; lbTy = 0; }
+            lbApply();
           }
           lbLastDist = dist;
         }
       };
       track.ontouchend = e => {
-        if (e.changedTouches.length === 1 && lbScale <= 1.05) {
-          const dx = e.changedTouches[0].clientX - lbTouchStartX;
-          if (Math.abs(dx) > 40) lbMove(dx < 0 ? 1 : -1);
+        if (e.touches.length > 0) return; // まだ指が残っている
+        const t = e.changedTouches[0];
+        const dx = t.clientX - lbTouchStartX;
+        const dy = t.clientY - lbTouchStartY;
+        const moved = Math.abs(dx) > 12 || Math.abs(dy) > 12;
+        const now = Date.now();
+        // ダブルタップ判定
+        if (!moved && lbLastDist === 0) {
+          if (now - lbLastTap < 300) {
+            lbDoubleTap(t.clientX, t.clientY);
+            lbLastTap = 0;
+            return;
+          }
+          lbLastTap = now;
         }
+        // 等倍のときだけスワイプで写真切り替え
+        if (!lbPanning && lbScale <= 1.05 && Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+          lbMove(dx < 0 ? 1 : -1);
+        }
+        lbPanning = false;
       };
     };
 
@@ -306,12 +396,12 @@
 
     window.closeLightbox = () => {
       document.getElementById('lightbox').classList.remove('open');
-      lbScale = 1;
+      lbScale = 1; lbTx = 0; lbTy = 0;
     };
     window.lbResetZoom = () => {
-      lbScale = 1;
-      const img = document.querySelector('.lb-slide:nth-child('+(lbIndex+1)+') img');
-      if (img) { img.style.transform = 'scale(1)'; img.style.transition = 'transform 0.2s'; }
+      lbScale = 1; lbTx = 0; lbTy = 0;
+      const img = lbCurImg();
+      if (img) { img.style.transition = 'transform 0.2s'; img.style.transform = 'translate(0,0) scale(1)'; }
     };
     window.lbMove = (dir) => {
       lbResetZoom();
